@@ -49,6 +49,18 @@ Cone::Cone(const Transform *o2w, const Transform *w2o, bool ro, Float height,
 Bounds3f Cone::ObjectBound() const {
     Point3f p1 = Point3f(-radius, -radius, 0);
     Point3f p2 = Point3f(radius, radius, height);
+
+    if (phiMax <= PiOver2) {
+        p1 = Point3f();
+        p2 = Point3f(radius, std::sin(phiMax) * radius, height);
+    }
+    else if (phiMax <= Pi) {
+        p1 = Point3f(std::cos(phiMax) * radius, 0, 0);
+    }
+    else if (phiMax <= (Pi + PiOver2)) {
+        p1 = Point3f(-radius, std::sin(phiMax) * radius, 0);
+    }
+
     return Bounds3f(p1, p2);
 }
 
