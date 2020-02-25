@@ -41,8 +41,25 @@ namespace pbrt {
 
 // Disk Method Definitions
 Bounds3f Disk::ObjectBound() const {
+    /*
     return Bounds3f(Point3f(-radius, -radius, height),
                     Point3f(radius, radius, height));
+    */
+    Point3f p1 = Point3f(-radius, -radius, height);
+    Point3f p2 = Point3f(radius, radius, height);
+
+    if (phiMax <= PiOver2) {
+        p1 = Point3f(0, 0, height);
+        p2 = Point3f(radius, std::sin(phiMax) * radius, height);
+    }
+    else if (phiMax <= Pi) {
+        p1 = Point3f(std::cos(phiMax) * radius, 0, height);
+    }
+    else if (phiMax <= (Pi + PiOver2)) {
+        p1 = Point3f(-radius, std::sin(phiMax) * radius, height);
+    }
+
+    return Bounds3f(p1, p2);
 }
 
 bool Disk::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
