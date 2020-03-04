@@ -237,12 +237,63 @@ Transform LookAt(const Point3f &pos, const Point3f &look, const Vector3f &up) {
 
 Bounds3f Transform::operator()(const Bounds3f &b) const {
     const Transform &M = *this;
+    /*
     Bounds3f ret(M(Point3f(b.pMin.x, b.pMin.y, b.pMin.z)));
-
-    Vector3f delta = b.pMax - b.pMin;
-    ret.pMax = ret.pMin + delta;
-
+    ret = Union(ret, M(Point3f(b.pMax.x, b.pMin.y, b.pMin.z)));
+    ret = Union(ret, M(Point3f(b.pMin.x, b.pMax.y, b.pMin.z)));
+    ret = Union(ret, M(Point3f(b.pMin.x, b.pMin.y, b.pMax.z)));
+    ret = Union(ret, M(Point3f(b.pMin.x, b.pMax.y, b.pMax.z)));
+    ret = Union(ret, M(Point3f(b.pMax.x, b.pMax.y, b.pMin.z)));
+    ret = Union(ret, M(Point3f(b.pMax.x, b.pMin.y, b.pMax.z)));
+    ret = Union(ret, M(Point3f(b.pMax.x, b.pMax.y, b.pMax.z)));
     return ret;
+    */
+
+    // Exercise 2-1
+    // References : 
+    // paper : Arvo, J. 1990. Transforming axis-aligned bounding boxes
+    // code : https://github.com/daspinola/video-stream-sample.git
+    //
+    // The idea is to construct a frame with axises of the bound
+    // By transforming it, we get the new axises which is not axis aligned
+    //
+    // |m11 m12 m13 m14|   |x 0 0 0|   |m11*x m12*y m13*z 0|
+    // |m21 m22 m23 m24|   |0 y 0 0|   |m21*x m22*y m23*z 0|
+    // |m31 m32 m33 m34| * |0 0 z 0| = |m31*x m32*y m33*z 0|
+    // |m41 m42 m43 m44|   |0 0 0 0|   |0     0     0     0|
+    //
+    // By adding new axises to the transformed pMin we get new points of
+    // the bound, here we get directly the minimum and maximum value of it
+    // to find pmin and pmax
+
+    auto pmin = M(Point3f{b.pMin.x, b.pMin.y, b.pMin.z});
+    auto pmax =  pmin;
+    auto diagonal = b.pMax - b.pMin;
+    for (int i = 0; i < 3; i++) {
+        // cannot visit data member like an array, do it one by one for now
+        // x
+        float translation_alone_axis = m.m[i][0] * diagonal.x;
+        if (translation_alone_axis < 0)
+            pmin.x += translation_alone_axis;
+        else
+            pmax.x += translation_alone_axis;
+
+        // y
+        translation_alone_axis = m.m[i][0] * diagonal.x;
+        if (translation_alone_axis < 0)
+            pmin.x += translation_alone_axis;
+        else
+            pmax.x += translation_alone_axis;
+
+        // z
+        translation_alone_axis = m.m[i][0] * diagonal.x;
+        if (translation_alone_axis < 0)
+            pmin.x += translation_alone_axis;
+        else
+            pmax.x += translation_alone_axis;
+
+    }
+    return Bounds3f(pmin, pmax);
 }
 
 Transform Transform::operator*(const Transform &t2) const {
@@ -1153,7 +1204,13 @@ void AnimatedTransform::Interpolate(Float time, Transform *t) const {
     Vector3f trans = (1 - dt) * T[0] + dt * T[1];
 
     // Interpolate rotation at _dt_
-    Quaternion rotate = Slerp(dt, R[0], R[1]);
+    //Quaternion rotate = Slerp(dt, R[0], R[1]);
+
+    // Exercise 2-4
+    // Avoid rotation lerp if there's no rotate
+    Quaternion rotate;
+    if (hasRotation)
+        rotate = Slerp(dt, R[0], R[1]);
 
     // Interpolate scale at _dt_
     Matrix4x4 scale;
