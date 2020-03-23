@@ -46,6 +46,10 @@ Bounds3f Sphere::ObjectBound() const {
     return Bounds3f(Point3f(-radius, -radius, zMin),
                     Point3f(radius, radius, zMax));
     */
+
+    // Exercise 3-2
+    //
+    // Generate more compact bounds according to phi.
     Point3f p1 = Point3f(-radius, -radius, zMin);
     Point3f p2 = Point3f(radius, radius, zMax);
 
@@ -57,7 +61,7 @@ Bounds3f Sphere::ObjectBound() const {
         p1 = Point3f(std::cos(phiMax) * radius, 0, zMin);
     }
     else if (phiMax <= (Pi + PiOver2)) {
-        p1 = Point3f(-radius, std::sin(phiMax) * radius, zMin);
+        p1 = Point3f(-radius, -std::sin(phiMax) * radius, zMin);
     }
 
     return Bounds3f(p1, p2);
