@@ -252,7 +252,7 @@ Bounds3f Transform::operator()(const Bounds3f &b) const {
     // Exercise 2-1
     // References : 
     // paper : Arvo, J. 1990. Transforming axis-aligned bounding boxes
-    // code : https://github.com/daspinola/video-stream-sample.git
+    // code : https://github.com/erich666/GraphicsGems
     //
     // The idea is to construct a frame with axises of the bound
     // By transforming it, we get the new axises which is not axis aligned
@@ -262,37 +262,29 @@ Bounds3f Transform::operator()(const Bounds3f &b) const {
     // |m31 m32 m33 m34| * |0 0 z 0| = |m31*x m32*y m33*z 0|
     // |m41 m42 m43 m44|   |0 0 0 0|   |0     0     0     0|
     //
-    // By adding new axises to the transformed pMin we get new points of
-    // the bound, here we get directly the minimum and maximum value of it
-    // to find pmin and pmax
-
-    auto pmin = M(Point3f{b.pMin.x, b.pMin.y, b.pMin.z});
-    auto pmax =  pmin;
-    auto diagonal = b.pMax - b.pMin;
+    // By summing up the absolute values of each component we get the
+    // maximum possible value on that axis, thus the new diagonal
+    auto center = (b.pMin + b.pMax) / 2;
+    auto diagonal = (b.pMax - b.pMin) / 2;
+    auto new_center = Point3f{m.m[0][3], m.m[1][3], m.m[2][3]};
+    auto new_diagonal = Vector3f{0, 0, 0};
     for (int i = 0; i < 3; i++) {
-        // cannot visit data member like an array, do it one by one for now
         // x
-        float translation_alone_axis = m.m[i][0] * diagonal.x;
-        if (translation_alone_axis < 0)
-            pmin.x += translation_alone_axis;
-        else
-            pmax.x += translation_alone_axis;
+        new_center.x += m.m[i][0] * center.x;
+        new_diagonal.x += fabs(m.m[i][0]) * diagonal.x;
 
         // y
-        translation_alone_axis = m.m[i][0] * diagonal.x;
-        if (translation_alone_axis < 0)
-            pmin.x += translation_alone_axis;
-        else
-            pmax.x += translation_alone_axis;
+        new_center.y += m.m[i][1] * center.y;
+        new_diagonal.y += fabs(m.m[i][1]) * diagonal.y;
 
         // z
-        translation_alone_axis = m.m[i][0] * diagonal.x;
-        if (translation_alone_axis < 0)
-            pmin.x += translation_alone_axis;
-        else
-            pmax.x += translation_alone_axis;
-
+        new_center.z += m.m[i][2] * center.z;
+        new_diagonal.z += fabs(m.m[i][2]) * diagonal.z;
     }
+
+    auto pmin = new_center - new_diagonal;
+    auto pmax = new_center + new_diagonal;
+
     return Bounds3f(pmin, pmax);
 }
 

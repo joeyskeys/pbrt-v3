@@ -45,6 +45,10 @@ Bounds3f Disk::ObjectBound() const {
     return Bounds3f(Point3f(-radius, -radius, height),
                     Point3f(radius, radius, height));
     */
+
+    // Exercise 3-2
+    //
+    // Generate more compact bounds according to phi.
     Point3f p1 = Point3f(-radius, -radius, height);
     Point3f p2 = Point3f(radius, radius, height);
 
@@ -56,7 +60,7 @@ Bounds3f Disk::ObjectBound() const {
         p1 = Point3f(std::cos(phiMax) * radius, 0, height);
     }
     else if (phiMax <= (Pi + PiOver2)) {
-        p1 = Point3f(-radius, std::sin(phiMax) * radius, height);
+        p1 = Point3f(-radius, -std::sin(phiMax) * radius, height);
     }
 
     return Bounds3f(p1, p2);

@@ -59,6 +59,9 @@ struct SDVertex {
     SDFace *startFace = nullptr;
     SDVertex *child = nullptr;
     bool regular = false, boundary = false;
+
+    // Crease factor
+    float crease = 0.f;
 };
 
 struct SDFace {
@@ -149,7 +152,10 @@ inline Float loopGamma(int valence) {
 static std::vector<std::shared_ptr<Shape>> LoopSubdivide(
     const Transform *ObjectToWorld, const Transform *WorldToObject,
     bool reverseOrientation, int nLevels, int nIndices,
-    const int *vertexIndices, int nVertices, const Point3f *p) {
+    const int *vertexIndices, int nVertices, const Point3f *p,
+    const int *creaseIndices, const float *creaseWeights, 
+    int nCreaseIndices
+    ) {
     std::vector<SDVertex *> vertices;
     std::vector<SDFace *> faces;
     // Allocate _LoopSubdiv_ vertices and faces
@@ -158,6 +164,15 @@ static std::vector<std::shared_ptr<Shape>> LoopSubdivide(
         verts[i] = SDVertex(p[i]);
         vertices.push_back(&verts[i]);
     }
+
+    // Add crease factor if provided
+    if (creaseIndices) {
+        for (int i = 0; i < nCreaseIndices; ++i) {
+            int creaseIndex = creaseIndices[i];
+            verts[creaseIndex].crease = creaseWeights[i];
+        }
+    }
+
     int nFaces = nIndices / 3;
     std::unique_ptr<SDFace[]> fs(new SDFace[nFaces]);
     for (int i = 0; i < nFaces; ++i) faces.push_back(&fs[i]);
@@ -226,6 +241,10 @@ static std::vector<std::shared_ptr<Shape>> LoopSubdivide(
             vertex->child = arena.Alloc<SDVertex>();
             vertex->child->regular = vertex->regular;
             vertex->child->boundary = vertex->boundary;
+
+            // Pass crease value to child vertex
+            vertex->child->crease = vertex->crease;
+
             newVertices.push_back(vertex->child);
         }
         for (SDFace *face : f) {
@@ -238,18 +257,29 @@ static std::vector<std::shared_ptr<Shape>> LoopSubdivide(
         // Update vertex positions and create new edge vertices
 
         // Update vertex positions for even vertices
+        // Store the new position in a temporary variable and lerp it
+        // with original position using the crease factor
+        // Crease factor 1.0 means use the original position
+        Point3f new_position;
         for (SDVertex *vertex : v) {
             if (!vertex->boundary) {
                 // Apply one-ring rule for even vertex
-                if (vertex->regular)
-                    vertex->child->p = weightOneRing(vertex, 1.f / 16.f);
-                else
-                    vertex->child->p =
-                        weightOneRing(vertex, beta(vertex->valence()));
+                if (vertex->regular) {
+                    //vertex->child->p = weightOneRing(vertex, 1.f / 16.f);
+                    new_position = weightOneRing(vertex, 1.f / 16.f);
+                }
+                else {
+                    //vertex->child->p =
+                    //    weightOneRing(vertex, beta(vertex->valence()));
+                    new_position = weightOneRing(vertex,
+                        beta(vertex->valence()));
+                }
             } else {
                 // Apply boundary rule for even vertex
-                vertex->child->p = weightBoundary(vertex, 1.f / 8.f);
+                //vertex->child->p = weightBoundary(vertex, 1.f / 8.f);
+                new_position = weightBoundary(vertex, 1.f / 8.f);
             }
+            vertex->child->p = Lerp(vertex->crease, new_position, vertex->p);
         }
 
         // Compute new odd edge vertices
@@ -267,6 +297,10 @@ static std::vector<std::shared_ptr<Shape>> LoopSubdivide(
                     vert->boundary = (face->f[k] == nullptr);
                     vert->startFace = face->children[3];
 
+                    // Update crease value for new vertex with the average of two
+                    // neighbor vertices
+                    vert->crease = (edge.v[0]->crease + edge.v[1]->crease) / 2.;
+
                     // Apply edge rules to compute new vertex position
                     if (vert->boundary) {
                         vert->p = 0.5f * edge.v[0]->p;
@@ -280,6 +314,12 @@ static std::vector<std::shared_ptr<Shape>> LoopSubdivide(
                             1.f / 8.f *
                             face->f[k]->otherVert(edge.v[0], edge.v[1])->p;
                     }
+
+                    // Lerp between calculated position and mid point on the
+                    // edge to get the creased new point position
+                    auto mid_point = (edge.v[0]->p + edge.v[1]->p) / 2.;
+                    vert->p = Lerp(vert->crease, vert->p, mid_point);
+
                     edgeVerts[edge] = vert;
                 }
             }
@@ -417,10 +457,30 @@ std::vector<std::shared_ptr<Shape>> CreateLoopSubdiv(const Transform *o2w,
         return std::vector<std::shared_ptr<Shape>>();
     }
 
+    // Exercise 3-10
+    //
+    // Edge Crease is achieved by adding crease attribute for points to
+    // affect the point position refinement.
+    int nCreaseIndices, nCreaseWeights;
+    const int *creaseIndices = params.FindInt("creaseindices", &nCreaseIndices);
+    const float *creaseWeights = params.FindFloat("creaseweights", &nCreaseWeights);
+    if (creaseIndices && creaseWeights) {
+        if (nCreaseIndices != nCreaseWeights) {
+            Error("Crease indices and weights count not matched");
+            return std::vector<std::shared_ptr<Shape>>();
+        }
+    }
+    else if (creaseIndices || creaseWeights) {
+        Error("Crease indices and weights must be specified together");
+        return std::vector<std::shared_ptr<Shape>>();
+    }
+
     // don't actually use this for now...
     std::string scheme = params.FindOneString("scheme", "loop");
     return LoopSubdivide(o2w, w2o, reverseOrientation, nLevels, nIndices,
-                         vertexIndices, nps, P);
+                         vertexIndices, nps, P,
+                         creaseIndices, creaseWeights, nCreaseIndices
+                         );
 }
 
 static Point3f weightOneRing(SDVertex *vert, Float beta) {

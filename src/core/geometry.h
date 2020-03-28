@@ -865,6 +865,55 @@ class Bounds2iIterator : public std::forward_iterator_tag {
     const Bounds2i *bounds;
 };
 
+// Exercise 2-2
+//
+// Try to add compact bounds with arbitrary slabs.
+// Slab class use x,y,z,w to denote a plane of form ax + by + cz = d.
+// And define point that makes ax + by + cz > d is inside the slab region.
+// Then for the axis aligned box centered at orgin with size 2, we have:
+// left plane  :  1 * x +  0 * y +  0 * z = -1
+// right plane : -1 * x +  0 * y +  0 * z = -1
+// up plane    :  0 * x + -1 * y +  0 * z = -1
+// bottom plane:  0 * x +  1 * y +  0 * z = -1
+// front plane :  0 * x +  0 * y +  1 * z = -1
+// back plane  :  0 * x +  0 * y + -1 * z = -1
+// Note that the comparison is always >, negation is needed for some slabs.
+// In this implementation the Region denoted by the ArbitraryBounds may not
+// be closed.
+
+// Slab Declarations
+template <typename T>
+class Slab {
+  public:
+    Slab(T xx, T yy, T zz, T ww)
+    : a(xx), b(yy), c(zz), d(ww) {}
+
+    bool IntersectP(const Ray &ray, Float *hit) const;
+
+    T a, b, c, d;
+};
+
+using Slabf = Slab<float>;
+using Slabd = Slab<double>;
+
+// Compact Bounds Declarations
+template <typename T>
+class ArbitraryBounds {
+  public:
+    ArbitraryBounds() {}
+    void AddSlab(T x, T y, T z, T w) {
+        slabs.emplace_back(Slab<T>(x, y, z, w));
+    }
+    bool IntersectP(const Ray &ray, Float *hit) const;
+
+    // Public data
+    std::vector<Slab<T>> slabs;
+};
+
+using ArbitraryBoundsf = ArbitraryBounds<float>;
+using ArbitraryBoundsd = ArbitraryBounds<double>;
+// Exercise 2-2 end.
+
 // Ray Declarations
 class Ray {
   public:
@@ -880,6 +929,11 @@ class Ray {
            << ", time=" << r.time << "]";
         return os;
     }
+    Float EvaluateT(const Point3f &p) const {
+    // Assume d is normalized
+    auto o_to_p = p - o;
+    return o_to_p.x * d.x + o_to_p.y * d.y + o_to_p.z * d.z;
+}
 
     // Ray Public Data
     Point3f o;
@@ -1472,6 +1526,41 @@ inline Float SphericalTheta(const Vector3f &v) {
 inline Float SphericalPhi(const Vector3f &v) {
     Float p = std::atan2(v.y, v.x);
     return (p < 0) ? (p + 2 * Pi) : p;
+}
+
+template <typename T>
+bool Slab<T>::IntersectP(const Ray &ray, Float *hit) const {
+    if (ray.o[0] * a + ray.o[1] * b + ray.o[2] * c > d) {
+        if (hit)
+            *hit = 0;
+        return true;
+    }
+    else {
+        T d_dot_s = Dot(ray.d, Vector3f(a, b, c));
+        if (d_dot_s < 0)
+            return false;
+        else if (d_dot_s <= MachineEpsilon)
+            return false;
+        else {
+            T t = (d - (a * ray.o[0] + b * ray.o[1] + c * ray.o[2])) / d_dot_s;
+            *hit = t;
+            return true;
+        }
+    }
+}
+
+template <typename T>
+bool ArbitraryBounds<T>::IntersectP(const Ray &ray, Float *hit) const {
+    Float tmp = ray.tMax;
+    bool hitted = false;
+    for (auto &s : slabs) {
+        if (s.IntersectP(ray, &tmp)) {
+            hitted = true;
+            if (tmp < *hit)
+                *hit = tmp;
+        }
+    }
+    return hitted;
 }
 
 }  // namespace pbrt
