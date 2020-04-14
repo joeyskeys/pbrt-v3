@@ -51,7 +51,8 @@ class Camera {
   public:
     // Camera Interface
     Camera(const AnimatedTransform &CameraToWorld, Float shutterOpen,
-           Float shutterClose, Film *film, const Medium *medium);
+           Float shutterClose, Film *film, const Medium *medium,
+           bool uSlit=false, Float sWidth=0);
     virtual ~Camera();
     virtual Float GenerateRay(const CameraSample &sample, Ray *ray) const = 0;
     virtual Float GenerateRayDifferential(const CameraSample &sample,
@@ -65,6 +66,8 @@ class Camera {
     // Camera Public Data
     AnimatedTransform CameraToWorld;
     const Float shutterOpen, shutterClose;
+    bool useSlit;
+    const Float slitWidth;
     Film *film;
     const Medium *medium;
 };
@@ -88,8 +91,10 @@ class ProjectiveCamera : public Camera {
                      const Transform &CameraToScreen,
                      const Bounds2f &screenWindow, Float shutterOpen,
                      Float shutterClose, Float lensr, Float focald, Film *film,
-                     const Medium *medium)
-        : Camera(CameraToWorld, shutterOpen, shutterClose, film, medium),
+                     const Medium *medium,
+                     bool uSlit=false, Float sWidth=0)
+        : Camera(CameraToWorld, shutterOpen, shutterClose, film, medium,
+            uSlit, sWidth),
           CameraToScreen(CameraToScreen) {
         // Initialize depth of field parameters
         lensRadius = lensr;

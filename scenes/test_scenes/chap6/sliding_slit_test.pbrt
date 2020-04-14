@@ -1,0 +1,60 @@
+
+LookAt 0 30 80
+       0 15 0
+       0 1 0
+Camera "perspective" "float fov" 45 "bool useslit" "true" "float slitwidth" 0.1
+
+Sampler "halton" "integer pixelsamples" 8
+Integrator "path"
+Film "image" "string filename" "cornell_box.png"
+     "integer xresolution" [480] "integer yresolution" [360]
+
+TransformTimes 0 2
+
+WorldBegin
+
+LightSource "infinite" "rgb L" [0.3 0.3 0.3]
+
+LightSource "distant" "point from" [-10 20 40]
+    "blackbody L" [3000 1.5]
+
+AttributeBegin
+    Material "disney" "rgb color" [0.6 0.6 0.6]
+    Translate 0 -500 0
+    Shape "sphere" "float radius" 500
+AttributeEnd
+
+AttributeBegin
+    Material "disney" "rgb color" [0.8 0.2 0.2]
+    Translate 0 10 0
+    ActiveTransform StartTime
+    Translate -10 5 0
+    ActiveTransform EndTime
+    Translate 10 5 0
+    ActiveTransform All
+    Shape "sphere" "float radius" 5
+AttributeEnd
+
+AttributeBegin
+    Material "disney" "rgb color" [0.8 0.2 0.2]
+    Translate 0 10 0
+    ActiveTransform StartTime
+    Translate -10 15 0
+    ActiveTransform EndTime
+    Translate 10 15 0
+    ActiveTransform All
+    Shape "sphere" "float radius" 5
+AttributeEnd
+
+AttributeBegin
+    Material "disney" "rgb color" [0.8 0.2 0.2]
+    Translate 0 10 0
+    ActiveTransform StartTime
+    Translate -10 25 0
+    ActiveTransform EndTime
+    Translate 10 25 0
+    ActiveTransform All
+    Shape "sphere" "float radius" 5
+AttributeEnd
+
+WorldEnd

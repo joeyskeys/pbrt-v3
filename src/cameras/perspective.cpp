@@ -47,10 +47,12 @@ PerspectiveCamera::PerspectiveCamera(const AnimatedTransform &CameraToWorld,
                                      Float shutterOpen, Float shutterClose,
                                      Float lensRadius, Float focalDistance,
                                      Float fov, Film *film,
-                                     const Medium *medium)
+                                     const Medium *medium,
+                                     bool uSlit, Float sWidth)
     : ProjectiveCamera(CameraToWorld, Perspective(fov, 1e-2f, 1000.f),
                        screenWindow, shutterOpen, shutterClose, lensRadius,
-                       focalDistance, film, medium) {
+                       focalDistance, film, medium,
+                       uSlit, sWidth) {
     // Compute differential changes in origin for perspective camera rays
     dxCamera =
         (RasterToCamera(Point3f(1, 0, 0)) - RasterToCamera(Point3f(0, 0, 0)));
@@ -64,6 +66,9 @@ PerspectiveCamera::PerspectiveCamera(const AnimatedTransform &CameraToWorld,
     pMin /= pMin.z;
     pMax /= pMax.z;
     A = std::abs((pMax.x - pMin.x) * (pMax.y - pMin.y));
+
+    if (uSlit)
+        Warning("Perspective camera using sliding slit");
 }
 
 Float PerspectiveCamera::GenerateRay(const CameraSample &sample,
@@ -86,7 +91,32 @@ Float PerspectiveCamera::GenerateRay(const CameraSample &sample,
         ray->o = Point3f(pLens.x, pLens.y, 0);
         ray->d = Normalize(pFocus - ray->o);
     }
-    ray->time = Lerp(sample.time, shutterOpen, shutterClose);
+
+    // Exercise 6-1
+    // Modify ray time if sliding slit is used
+    if (!useSlit) {
+        // Original implementation
+        ray->time = Lerp(sample.time, shutterOpen, shutterClose);
+    }
+    else {
+        /*
+        // Get the slit bound the sample point lies in
+        float ratio = sample.pFilm.x / film->fullResolution.x;
+        float leftBound = std::max(0.f, ratio - slitWidth);
+        float rightBound = std::min(1.f, ratio + slitWidth);
+
+        // Get corresponding time range
+        float enterSlit = leftBound * (shutterClose - shutterOpen) + shutterOpen;
+        float leaveSlit = rightBound * (shutterClose - shutterOpen) + shutterOpen;
+
+        // Lerp with in the range
+        ray->time = Lerp(sample.time, enterSlit, leaveSlit);
+        */
+        float shutterOpenRatio = sample.pFilm.y / film->fullResolution.y;
+        float shutterClosing = shutterOpen + (shutterClose - shutterOpen) * shutterOpenRatio;
+        ray->time = Lerp(sample.time, shutterOpen, shutterClosing);
+    }
+
     ray->medium = medium;
     *ray = CameraToWorld(*ray);
     return 1;
@@ -240,6 +270,10 @@ PerspectiveCamera *CreatePerspectiveCamera(const ParamSet &params,
     Float frame = params.FindOneFloat(
         "frameaspectratio",
         Float(film->fullResolution.x) / Float(film->fullResolution.y));
+
+    bool useslit = params.FindOneBool("useslit", false);
+    Float slitwidth = params.FindOneFloat("slitwidth", 0.f);
+
     Bounds2f screen;
     if (frame > 1.f) {
         screen.pMin.x = -frame;
@@ -269,7 +303,8 @@ PerspectiveCamera *CreatePerspectiveCamera(const ParamSet &params,
         // hack for structure synth, which exports half of the full fov
         fov = 2.f * halffov;
     return new PerspectiveCamera(cam2world, screen, shutteropen, shutterclose,
-                                 lensradius, focaldistance, fov, film, medium);
+                                 lensradius, focaldistance, fov, film, medium,
+                                 useslit, slitwidth);
 }
 
 }  // namespace pbrt

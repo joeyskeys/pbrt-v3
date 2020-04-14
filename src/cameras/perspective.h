@@ -52,7 +52,8 @@ class PerspectiveCamera : public ProjectiveCamera {
     PerspectiveCamera(const AnimatedTransform &CameraToWorld,
                       const Bounds2f &screenWindow, Float shutterOpen,
                       Float shutterClose, Float lensRadius, Float focalDistance,
-                      Float fov, Film *film, const Medium *medium);
+                      Float fov, Film *film, const Medium *medium,
+                      bool uSlit=false, Float sWidth=0);
     Float GenerateRay(const CameraSample &sample, Ray *) const;
     Float GenerateRayDifferential(const CameraSample &sample,
                                   RayDifferential *ray) const;
