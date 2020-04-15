@@ -54,14 +54,14 @@ class PerspectiveCamera : public ProjectiveCamera {
                       Float shutterClose, Float lensRadius, Float focalDistance,
                       Float fov, Film *film, const Medium *medium,
                       bool uSlit=false, Float sWidth=0);
-    Float GenerateRay(const CameraSample &sample, Ray *) const;
+    Float GenerateRay(const CameraSample &sample, Ray *) const override;
     Float GenerateRayDifferential(const CameraSample &sample,
-                                  RayDifferential *ray) const;
-    Spectrum We(const Ray &ray, Point2f *pRaster2 = nullptr) const;
-    void Pdf_We(const Ray &ray, Float *pdfPos, Float *pdfDir) const;
+                                  RayDifferential *ray) const override;
+    Spectrum We(const Ray &ray, Point2f *pRaster2 = nullptr) const override;
+    void Pdf_We(const Ray &ray, Float *pdfPos, Float *pdfDir) const override;
     Spectrum Sample_Wi(const Interaction &ref, const Point2f &sample,
                        Vector3f *wi, Float *pdf, Point2f *pRaster,
-                       VisibilityTester *vis) const;
+                       VisibilityTester *vis) const override;
 
   private:
     // PerspectiveCamera Private Data

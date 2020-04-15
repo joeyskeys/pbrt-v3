@@ -166,7 +166,42 @@ Float PerspectiveCamera::GenerateRayDifferential(const CameraSample &sample,
         ray->rxDirection = Normalize(Vector3f(pCamera) + dxCamera);
         ray->ryDirection = Normalize(Vector3f(pCamera) + dyCamera);
     }
-    ray->time = Lerp(sample.time, shutterOpen, shutterClose);
+    //ray->time = Lerp(sample.time, shutterOpen, shutterClose);
+
+    // Exercise 6-1
+    // Modify ray time if sliding slit is used
+    //
+    // Reference : Glassner, A. 1999. An open and shut case.
+    // IEEE Computer Graphics and Applications 19(3), 82–92.
+    //
+    // The code now simulate a focal shutter which will start
+    // closing from the shutter start time and totally closed
+    // at shutter close time, move speed is linear.
+    //
+    // TODO : implement more shutter model described in the paper.
+    if (!useSlit) {
+        // Original implementation
+        ray->time = Lerp(sample.time, shutterOpen, shutterClose);
+    }
+    else {
+        /*
+        // Get the slit bound the sample point lies in
+        float ratio = sample.pFilm.x / film->fullResolution.x;
+        float leftBound = std::max(0.f, ratio - slitWidth);
+        float rightBound = std::min(1.f, ratio + slitWidth);
+
+        // Get corresponding time range
+        float enterSlit = leftBound * (shutterClose - shutterOpen) + shutterOpen;
+        float leaveSlit = rightBound * (shutterClose - shutterOpen) + shutterOpen;
+
+        // Lerp with in the range
+        ray->time = Lerp(sample.time, enterSlit, leaveSlit);
+        */
+        float shutterOpenRatio = sample.pFilm.y / film->fullResolution.y;
+        float shutterClosing = shutterOpen + (shutterClose - shutterOpen) * shutterOpenRatio;
+        ray->time = Lerp(sample.time, shutterOpen, shutterClosing);
+    }
+
     ray->medium = medium;
     *ray = CameraToWorld(*ray);
     ray->hasDifferentials = true;
